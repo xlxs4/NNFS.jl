@@ -3,17 +3,31 @@ using Statistics
 
 Random.seed!(0)
 
-function spiraldata(points, classes)
-    X = zeros(Float64, points * classes, 2)
-    y = zeros(UInt8, points * classes)
+function spiraldata(samples, classes)
+    X = zeros(samples * classes, 2)
+    y = zeros(UInt8, samples * classes)
 
-    for class_number = 1:classes
-        ix = points*(class_number-1)+1:points*class_number
-        r = range(0, 1, points)
-        t = range((class_number - 1) * 4, class_number * 4, points) .+ randn(points) * 0.2
+    for classnum in 1:classes
+        ix = samples*(classnum-1)+1:samples*classnum
+        r = range(0, 1, samples)
+        t = range((classnum - 1) * 4, classnum * 4, samples) .+ randn(samples) * 0.2
 
         X[ix, :] .= [r .* sin.(t * 2.5) r .* cos.(t * 2.5)]
-        y[ix] .= class_number
+        y[ix] .= classnum
+    end
+
+    X, y
+end
+
+function verticaldata(samples, classes)
+    X = zeros(samples * classes, 2)
+    y = zeros(UInt8, samples * classes)
+
+    for classnum in 1:classes
+        ix = samples*(classnum-1)+1:samples*classnum
+
+        X[ix, :] .= [randn(samples) * 0.1 .+ classnum / 3 randn(samples) * 0.1 .+ 0.5]
+        y[ix] .= classnum
     end
 
     X, y
