@@ -1,5 +1,6 @@
 using Random
 using Statistics
+using Zygote
 
 Random.seed!(0)
 
@@ -78,7 +79,7 @@ end
 
 epseltype(x) = eps(float(eltype(x)))
 
-function crossentropy(ŷ, y; dims=2, agg=mean, eps::Real=epseltype(ŷ))
+function crossentropy(ŷ, y; dims=1, agg=mean, eps::Real=epseltype(ŷ))
     agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
 end
 
@@ -90,5 +91,13 @@ out = Chain(
     softmax
 )(X)
 
-loss = crossentropy(out, y)
+function onehot(y, classes)
+    onehot_y = zeros(Bool, (classes, length(y)))
+    for (i, label) in enumerate(y)
+        onehot_y[label, i] = true
+    end
+    return onehot_y
+end
+
+loss = crossentropy(out', onehot(y, 3))
 println(loss)
