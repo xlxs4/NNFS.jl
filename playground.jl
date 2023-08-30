@@ -64,8 +64,8 @@ end
 
 epseltype(x) = eps(float(eltype(x)))
 
-function crossentropy(ŷ, y; dims=2, eps::Real=epseltype(ŷ))
-    mean(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
+function crossentropy(ŷ, y; dims=2, agg=mean, eps::Real=epseltype(ŷ))
+    agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
 end
 
 X, y = spiraldata(100, 3)
