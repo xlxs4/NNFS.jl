@@ -33,20 +33,21 @@ function verticaldata(samples, classes)
     X, y
 end
 
-struct Dense{M<:AbstractMatrix,B<:AbstractVector}
+struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
     weight::M
     bias::B
+    σ::F
 
-    function Dense(n_inputs, n_neurons)
+    function Dense(n_inputs, n_neurons, σ::F=identity) where {F}
         weight = 0.01 * randn(n_inputs, n_neurons)
         bias = zeros(n_neurons)
 
-        new{typeof(weight),typeof(bias)}(weight, bias)
+        new{F,typeof(weight),typeof(bias)}(weight, bias, σ)
     end
 end
 
-function fwpass(layer::Dense, inputs)
-    inputs * layer.weight .+ layer.bias'
+function fwpass(layer::Dense, X)
+    layer.σ.(X * layer.weight .+ layer.bias')
 end
 
 relu(x) = ifelse(x < 0, zero(x), x)
@@ -69,13 +70,13 @@ end
 
 X, y = spiraldata(100, 3)
 
-layer1 = Dense(2, 3)
+layer1 = Dense(2, 3, relu)
 output1 = fwpass(layer1, X)
-activation_output1 = relu.(output1)
 
 layer2 = Dense(3, 3)
-output2 = fwpass(layer2, activation_output1)
-activation_output2 = softmax(output2)
+output2 = fwpass(layer2, output1)
 
-loss = crossentropy(activation_output2, y)
+soutput2 = softmax(output2)
+
+loss = crossentropy(soutput2, y)
 println(loss)
