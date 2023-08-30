@@ -60,8 +60,8 @@ struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
     end
 end
 
-function (a::Dense)(X::AbstractVecOrMat)
-    a.activation.(X * a.weight .+ a.bias')
+function (a::Dense)(x::AbstractVecOrMat)
+    a.activation.(x * a.weight .+ a.bias')
 end
 
 relu(x) = ifelse(x < 0, zero(x), x)
@@ -86,8 +86,9 @@ X, y = spiraldata(100, 3)
 
 out = Chain(
     Dense(2, 3, relu),
-    Dense(3, 3)
+    Dense(3, 3),
+    softmax
 )(X)
 
-loss = crossentropy(softmax(out), y)
+loss = crossentropy(out, y)
 println(loss)
