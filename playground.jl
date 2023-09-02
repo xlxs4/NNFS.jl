@@ -54,7 +54,7 @@ struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
     activation::F
 
     function Dense(n_inputs, n_neurons, activation::F=identity) where {F}
-        weight = 0.01 * randn(n_inputs, n_neurons)
+        weight = 0.5 * randn(n_inputs, n_neurons)
         bias = zeros(n_neurons)
 
         new{F,typeof(weight),typeof(bias)}(weight, bias, activation)
@@ -79,17 +79,9 @@ end
 
 epseltype(x) = eps(float(eltype(x)))
 
-function crossentropy(ŷ, y; dims=1, agg=mean, eps::Real=epseltype(ŷ))
+function crossentropy(ŷ, y; dims=2, agg=mean, eps::Real=epseltype(ŷ))
     agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
 end
-
-X, y = spiraldata(100, 3)
-
-out = Chain(
-    Dense(2, 3, relu),
-    Dense(3, 3),
-    softmax
-)(X)
 
 function onehot(y, classes)
     onehot_y = zeros(Bool, (classes, length(y)))
@@ -99,5 +91,23 @@ function onehot(y, classes)
     return onehot_y
 end
 
-loss = crossentropy(out', onehot(y, 3))
-println(loss)
+X, _y = spiraldata(100, 3)
+y = onehot(_y, 3)'
+
+model = Chain(
+    Dense(2, 256, relu),
+    Dense(256, 256, relu),
+    Dense(256, 3),
+    softmax
+)
+
+eta = 0.01
+epochs = 20000
+for epoch in 1:epochs
+    loss, ∇model = withgradient(m -> crossentropy(m(X), y), model)
+    epoch % 500 == 0 && println(loss)
+    for i in 1:3
+        model.layers[i].weight .-= eta * ∇model[1].layers[i].weight
+        model.layers[i].bias .-= eta * ∇model[1].layers[i].bias
+    end
+end
