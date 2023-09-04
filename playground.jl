@@ -61,8 +61,11 @@ struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
     end
 end
 
+@inline __apply_activation(::typeof(identity), x) = x
+@inline __apply_activation(f, x) = f.(x)
+
 function (a::Dense)(x::AbstractVecOrMat)
-    return a.activation.(x * a.weight .+ a.bias')
+    return __apply_activation(a.activation, x * a.weight .+ a.bias')
 end
 
 relu(x) = ifelse(x < 0, zero(x), x)
