@@ -44,15 +44,19 @@ function (chain::Chain)(x)
 end
 
 @concrete struct Dense
+    activation
     weight
     bias
-    activation
 end
 
-function Dense(n_inputs::Int, n_neurons::Int, activation=identity)
-    weight = 0.5 * randn(n_inputs, n_neurons)
-    bias = zeros(n_neurons)
-    return Dense(weight, bias, activation)
+function Dense(mapping::Pair{<:Int,<:Int}, activation=identity)
+    return Dense(first(mapping), last(mapping), activation)
+end
+
+function Dense(in_dims::Int, out_dims::Int, activation=identity)
+    weight = 0.5 * randn(in_dims, out_dims)
+    bias = zeros(out_dims)
+    return Dense(activation, weight, bias)
 end
 
 @inline __apply_activation(::typeof(identity), x) = x
@@ -92,9 +96,9 @@ X, _y = spiraldata(100, 3)
 y = onehot(_y, 3)'
 
 model = Chain(
-    Dense(2, 256, relu),
-    Dense(256, 256, relu),
-    Dense(256, 3),
+    Dense(2 => 256, relu),
+    Dense(256 => 256, relu),
+    Dense(256 => 3),
     softmax
 )
 
