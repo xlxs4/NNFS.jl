@@ -5,6 +5,14 @@ using Zygote
 
 Random.seed!(0)
 
+function onehot(y, classes)
+    onehot_y = zeros(Bool, (classes, length(y)))
+    for (i, label) in enumerate(y)
+        onehot_y[label, i] = true
+    end
+    return onehot_y
+end
+
 function spiraldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
@@ -15,7 +23,7 @@ function spiraldata(samples, classes)
         X[ix, :] .= [r .* sin.(t * 2.5) r .* cos.(t * 2.5)]
         y[ix] .= classnum
     end
-    return X, y
+    return transpose(X), onehot(y, classes)
 end
 
 function verticaldata(samples, classes)
@@ -26,7 +34,7 @@ function verticaldata(samples, classes)
         X[ix, :] .= [randn(samples) * 0.1 .+ classnum / 3 randn(samples) * 0.1 .+ 0.5]
         y[ix] .= classnum
     end
-    return X, y
+    return transpose(X), onehot(y, classes)
 end
 
 struct Chain{T<:Union{Tuple,NamedTuple}}
@@ -54,7 +62,7 @@ function Dense(mapping::Pair{<:Int,<:Int}, activation=identity)
 end
 
 function Dense(in_dims::Int, out_dims::Int, activation=identity)
-    weight = 0.5 * randn(in_dims, out_dims)
+    weight = 0.5 * randn(out_dims, in_dims)
     bias = zeros(out_dims)
     return Dense(activation, weight, bias)
 end
@@ -63,12 +71,12 @@ end
 @inline __apply_activation(f, x) = f.(x)
 
 @inline function (d::Dense)(x::AbstractVecOrMat)
-    return __apply_activation(d.activation, x * d.weight .+ d.bias')
+    return __apply_activation(d.activation, d.weight * x .+ d.bias)
 end
 
 relu(x) = ifelse(x < 0, zero(x), x)
 
-function softmax(x; dims=2)
+function softmax(x; dims=1)
     exps = exp.(x .- maximum(x; dims))
     return exps ./ sum(exps; dims)
 end
@@ -80,20 +88,11 @@ end
 
 epseltype(x) = eps(float(eltype(x)))
 
-function crossentropy(ŷ, y; dims=2, agg=mean, eps::Real=epseltype(ŷ))
+function crossentropy(ŷ, y; dims=1, agg=mean, eps::Real=epseltype(ŷ))
     return agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
 end
 
-function onehot(y, classes)
-    onehot_y = zeros(Bool, (classes, length(y)))
-    for (i, label) in enumerate(y)
-        onehot_y[label, i] = true
-    end
-    return onehot_y
-end
-
-X, _y = spiraldata(100, 3)
-y = onehot(_y, 3)'
+X, y = spiraldata(100, 3)
 
 model = Chain(
     Dense(2 => 256, relu),
