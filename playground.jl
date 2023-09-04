@@ -17,7 +17,7 @@ function spiraldata(samples, classes)
         y[ix] .= classnum
     end
 
-    X, y
+    return X, y
 end
 
 function verticaldata(samples, classes)
@@ -31,7 +31,7 @@ function verticaldata(samples, classes)
         y[ix] .= classnum
     end
 
-    X, y
+    return X, y
 end
 
 struct Chain{T<:Union{Tuple,NamedTuple}}
@@ -41,11 +41,11 @@ end
 Chain(xs...) = Chain(xs)
 function Chain(; kw...)
     isempty(kw) && return Chain(())
-    Chain(values(kw))
+    return Chain(values(kw))
 end
 
 function (chain::Chain)(x)
-    foldl((x, layer) -> layer(x), chain.layers, init=x)
+    return foldl((x, layer) -> layer(x), chain.layers, init=x)
 end
 
 struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
@@ -57,30 +57,30 @@ struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
         weight = 0.5 * randn(n_inputs, n_neurons)
         bias = zeros(n_neurons)
 
-        new{F,typeof(weight),typeof(bias)}(weight, bias, activation)
+        return new{F,typeof(weight),typeof(bias)}(weight, bias, activation)
     end
 end
 
 function (a::Dense)(x::AbstractVecOrMat)
-    a.activation.(x * a.weight .+ a.bias')
+    return a.activation.(x * a.weight .+ a.bias')
 end
 
 relu(x) = ifelse(x < 0, zero(x), x)
 
 function softmax(x; dims=2)
     exps = exp.(x .- maximum(x; dims))
-    exps ./ sum(exps; dims)
+    return exps ./ sum(exps; dims)
 end
 
 function xlogy(x, y)
     result = x * log(y)
-    ifelse(iszero(x), zero(result), result)
+    return ifelse(iszero(x), zero(result), result)
 end
 
 epseltype(x) = eps(float(eltype(x)))
 
 function crossentropy(ŷ, y; dims=2, agg=mean, eps::Real=epseltype(ŷ))
-    agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
+    return agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
 end
 
 function onehot(y, classes)
@@ -102,10 +102,10 @@ model = Chain(
 )
 
 eta = 0.01
-epochs = 20000
+epochs = 50000
 for epoch in 1:epochs
     loss, ∇model = withgradient(m -> crossentropy(m(X), y), model)
-    epoch % 500 == 0 && println(loss)
+    epoch % 1000 == 0 && println(loss)
     for i in 1:3
         model.layers[i].weight .-= eta * ∇model[1].layers[i].weight
         model.layers[i].bias .-= eta * ∇model[1].layers[i].bias
