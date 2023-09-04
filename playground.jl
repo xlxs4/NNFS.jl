@@ -1,3 +1,4 @@
+using ConcreteStructs
 using Random
 using Statistics
 using Zygote
@@ -7,30 +8,24 @@ Random.seed!(0)
 function spiraldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
-
     for classnum in 1:classes
         ix = samples*(classnum-1)+1:samples*classnum
         r = range(0, 1, samples)
         t = range((classnum - 1) * 4, classnum * 4, samples) .+ randn(samples) * 0.2
-
         X[ix, :] .= [r .* sin.(t * 2.5) r .* cos.(t * 2.5)]
         y[ix] .= classnum
     end
-
     return X, y
 end
 
 function verticaldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
-
     for classnum in 1:classes
         ix = samples*(classnum-1)+1:samples*classnum
-
         X[ix, :] .= [randn(samples) * 0.1 .+ classnum / 3 randn(samples) * 0.1 .+ 0.5]
         y[ix] .= classnum
     end
-
     return X, y
 end
 
@@ -48,24 +43,23 @@ function (chain::Chain)(x)
     return foldl((x, layer) -> layer(x), chain.layers, init=x)
 end
 
-struct Dense{F,M<:AbstractMatrix,B<:AbstractVector}
-    weight::M
-    bias::B
-    activation::F
+@concrete struct Dense
+    weight
+    bias
+    activation
+end
 
-    function Dense(n_inputs, n_neurons, activation::F=identity) where {F}
-        weight = 0.5 * randn(n_inputs, n_neurons)
-        bias = zeros(n_neurons)
-
-        return new{F,typeof(weight),typeof(bias)}(weight, bias, activation)
-    end
+function Dense(n_inputs::Int, n_neurons::Int, activation=identity)
+    weight = 0.5 * randn(n_inputs, n_neurons)
+    bias = zeros(n_neurons)
+    return Dense(weight, bias, activation)
 end
 
 @inline __apply_activation(::typeof(identity), x) = x
 @inline __apply_activation(f, x) = f.(x)
 
-function (a::Dense)(x::AbstractVecOrMat)
-    return __apply_activation(a.activation, x * a.weight .+ a.bias')
+@inline function (d::Dense)(x::AbstractVecOrMat)
+    return __apply_activation(d.activation, x * d.weight .+ d.bias')
 end
 
 relu(x) = ifelse(x < 0, zero(x), x)
