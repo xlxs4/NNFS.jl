@@ -53,7 +53,7 @@ end
 # afoldl needs an rrule
 # https://github.com/EnzymeAD/Enzyme.jl/issues/805
 # TODO: keep tabs on this
-(c::Chain)(x) = Base.foldl(|>, (x, c.layers...))
+(c::Chain)(x) = foldl(|>, (x, c.layers...))
 
 @concrete struct Dense
     activation
