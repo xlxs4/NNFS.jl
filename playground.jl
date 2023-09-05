@@ -47,9 +47,13 @@ function Chain(; kw...)
     return Chain(values(kw))
 end
 
-function (chain::Chain)(x)
-    return foldl((x, layer) -> layer(x), chain.layers, init=x)
-end
+# https://github.com/FluxML/Zygote.jl/issues/1126#issuecomment-981191246
+# init=x can disconnect the computational graph and make Zygote lose track of the grad
+# https://github.com/FluxML/Flux.jl/pull/1809#issuecomment-1009516145
+# afoldl needs an rrule
+# https://github.com/EnzymeAD/Enzyme.jl/issues/805
+# TODO: keep tabs on this
+(c::Chain)(x) = Base.foldl(|>, (x, c.layers...))
 
 @concrete struct Dense
     activation
@@ -102,7 +106,7 @@ model = Chain(
 )
 
 eta = 0.01
-epochs = 50000
+epochs = 8000
 for epoch in 1:epochs
     loss, ∇model = withgradient(m -> crossentropy(m(X), y), model)
     epoch % 1000 == 0 && println(loss)
