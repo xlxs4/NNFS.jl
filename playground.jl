@@ -3,6 +3,7 @@ using Random
 using Statistics
 using Zygote
 
+# TODO: make initialization methods that accept RNG as optional argument
 Random.seed!(0)
 
 function onehot(y, classes)
@@ -13,6 +14,7 @@ function onehot(y, classes)
     return onehot_y
 end
 
+# Adapted from https://cs231n.github.io/neural-networks-case-study/
 function spiraldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
@@ -26,6 +28,7 @@ function spiraldata(samples, classes)
     return transpose(X), onehot(y, classes)
 end
 
+# Adapted from https://cs231n.github.io/neural-networks-case-study/
 function verticaldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
@@ -71,6 +74,7 @@ function Dense(in_dims::Int, out_dims::Int, activation=identity)
     return Dense(activation, weight, bias)
 end
 
+# Don't broadcast activation if none was selected
 @inline __apply_activation(::typeof(identity), x) = x
 @inline __apply_activation(f, x) = f.(x)
 
@@ -78,6 +82,7 @@ end
     return __apply_activation(d.activation, d.weight * x .+ d.bias)
 end
 
+# Faster than max(zero(x), x), NaN-preserving
 relu(x) = ifelse(x < 0, zero(x), x)
 
 function softmax(x; dims=1)
