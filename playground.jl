@@ -3,9 +3,6 @@ using Random
 using Statistics
 using Zygote
 
-# TODO: make initialization methods that accept RNG as optional argument
-Random.seed!(0)
-
 function onehot(y, classes)
     onehot_y = zeros(Bool, (classes, length(y)))
     for (i, label) in enumerate(y)
@@ -19,7 +16,7 @@ function spiraldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
     for classnum in 1:classes
-        ix = samples*(classnum-1)+1:samples*classnum
+        ix = (samples * (classnum - 1) + 1):(samples * classnum)
         r = range(0, 1, samples)
         t = range((classnum - 1) * 4, classnum * 4, samples) .+ randn(samples) * 0.2
         X[ix, :] .= [r .* sin.(t * 2.5) r .* cos.(t * 2.5)]
@@ -33,14 +30,14 @@ function verticaldata(samples, classes)
     X = zeros(samples * classes, 2)
     y = zeros(UInt8, samples * classes)
     for classnum in 1:classes
-        ix = samples*(classnum-1)+1:samples*classnum
+        ix = (samples * (classnum - 1) + 1):(samples * classnum)
         X[ix, :] .= [randn(samples) * 0.1 .+ classnum / 3 randn(samples) * 0.1 .+ 0.5]
         y[ix] .= classnum
     end
     return transpose(X), onehot(y, classes)
 end
 
-struct Chain{T<:Union{Tuple,NamedTuple}}
+struct Chain{T <: Union{Tuple, NamedTuple}}
     layers::T
 end
 
@@ -59,18 +56,40 @@ end
 (c::Chain)(x) = foldl(|>, (x, c.layers...))
 
 @concrete struct Dense
-    activation
-    weight
-    bias
+    activation::Any
+    weight::Any
+    bias::Any
 end
 
-function Dense(mapping::Pair{<:Int,<:Int}, activation=identity)
+function Dense(mapping::Pair{<:Int, <:Int}, activation = identity)
     return Dense(first(mapping), last(mapping), activation)
 end
 
-function Dense(in_dims::Int, out_dims::Int, activation=identity)
-    weight = 0.5 * randn(out_dims, in_dims)
-    bias = zeros(out_dims)
+@inline _nfan() = 1, 1 # fan_in, fan_out
+@inline _nfan(n) = 1, n # A vector is treated as a n×1 matrix
+@inline _nfan(n_out, n_in) = n_in, n_out
+
+function he_normal(dims::Integer...; kwargs...)
+    he_normal(Xoshiro(1234), Float32, dims...; kwargs...)
+end
+
+function he_normal(rng::AbstractRNG,
+    ::Type{T},
+    dims::Integer...;
+    gain::Real = √T(2)) where {T <: Real}
+    std = gain / sqrt(T(first(_nfan(dims...))))
+    return randn(rng, T, dims...) .* std
+end
+
+zeros32(dims...) = zeros(Float32, dims...)
+
+function Dense(in_dims::Int,
+    out_dims::Int,
+    activation = identity;
+    init_weight = he_normal,
+    init_bias = zeros32)
+    weight = init_weight(out_dims, in_dims)
+    bias = init_bias(out_dims)
     return Dense(activation, weight, bias)
 end
 
@@ -85,7 +104,7 @@ end
 # Faster than max(zero(x), x), NaN-preserving
 relu(x) = ifelse(x < 0, zero(x), x)
 
-function softmax(x; dims=1)
+function softmax(x; dims = 1)
     exps = exp.(x .- maximum(x; dims))
     return exps ./ sum(exps; dims)
 end
@@ -97,18 +116,16 @@ end
 
 epseltype(x) = eps(float(eltype(x)))
 
-function crossentropy(ŷ, y; dims=1, agg=mean, eps::Real=epseltype(ŷ))
-    return agg(.-sum(xlogy.(y, ŷ .+ eps); dims=dims))
+function crossentropy(ŷ, y; dims = 1, agg = mean, eps::Real = epseltype(ŷ))
+    return agg(.-sum(xlogy.(y, ŷ .+ eps); dims = dims))
 end
 
 X, y = spiraldata(100, 3)
 
-model = Chain(
-    Dense(2 => 256, relu),
-    Dense(256 => 256, relu),
-    Dense(256 => 3),
-    softmax
-)
+model = Chain(Dense(2 => 64, relu),
+    Dense(64 => 64, relu),
+    Dense(64 => 3),
+    softmax)
 
 eta = 0.01
 epochs = 8000
