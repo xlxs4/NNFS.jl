@@ -1,5 +1,6 @@
 [deps]
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]

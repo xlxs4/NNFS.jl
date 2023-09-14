@@ -37,8 +37,8 @@ function verticaldata(samples, classes)
     return transpose(X), onehot(y, classes)
 end
 
-struct Chain{T <: Union{Tuple, NamedTuple}}
-    layers::T
+struct Chain
+    layers::Tuple
 end
 
 Chain(xs...) = Chain(xs)
@@ -56,13 +56,9 @@ end
 (c::Chain)(x) = foldl(|>, (x, c.layers...))
 
 @concrete struct Dense
-    activation::Any
-    weight::Any
-    bias::Any
-end
-
-function Dense(mapping::Pair{<:Int, <:Int}, activation = identity)
-    return Dense(first(mapping), last(mapping), activation)
+    activation
+    weight
+    bias
 end
 
 @inline _nfan() = 1, 1 # fan_in, fan_out
@@ -82,6 +78,10 @@ function he_normal(rng::AbstractRNG,
 end
 
 zeros32(dims...) = zeros(Float32, dims...)
+
+function Dense(mapping::Pair{<:Int, <:Int}, activation = identity; kwargs...)
+    return Dense(first(mapping), last(mapping), activation; kwargs...)
+end
 
 function Dense(in_dims::Int,
     out_dims::Int,
